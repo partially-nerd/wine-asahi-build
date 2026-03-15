@@ -1,4 +1,4 @@
-name: Build Wine for Asahi Linux (Complete)
+name: Build Wine for Asahi Linux
 
 on:
   workflow_dispatch:
@@ -8,15 +8,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04-arm
-    
+
     steps:
       - name: Checkout Wine
         run: |
           git clone https://gitlab.winehq.org/wine/wine.git
           cd wine
           git checkout wine-10.16
-          
-      - name: Install ALL build dependencies
+
+      - name: Install all build dependencies (single-line apt)
         run: |
           sudo apt update
           sudo apt install -y \
@@ -29,88 +29,71 @@ jobs:
             pkg-config \
             gcc-aarch64-linux-gnu \
             libc6-dev-arm64-cross \
-            # Graphics and UI libraries
-            libx11-dev:arm64 \
-            libxext-dev:arm64 \
-            libxrender-dev:arm64 \
-            libxrandr-dev:arm64 \
-            libxi-dev:arm64 \
-            libxfixes-dev:arm64 \
-            libxcursor-dev:arm64 \
-            libxcomposite-dev:arm64 \
-            libxinerama-dev:arm64 \
-            libxxf86vm-dev:arm64 \
-            libxdamage-dev:arm64 \
-            libxcomposite-dev:arm64 \
-            libxmu-dev:arm64 \
-            libxt-dev:arm64 \
-            libxaw7-dev:arm64 \
-            # Font libraries
-            libfreetype-dev:arm64 \
-            libfreetype6-dev:arm64 \
-            libfontconfig-dev:arm64 \
-            libxft-dev:arm64 \
-            # OpenGL
-            libgl1-mesa-dev:arm64 \
-            libglu1-mesa-dev:arm64 \
-            libosmesa6-dev:arm64 \
-            # Audio
-            libasound2-dev:arm64 \
-            libpulse-dev:arm64 \
-            libjack-dev:arm64 \
-            libaudio-dev:arm64 \
-            # Printing
-            libcups2-dev:arm64 \
-            # Scanner support
-            libsane-dev:arm64 \
-            # USB
-            libusb-1.0-0-dev:arm64 \
-            # Networking
-            libgnutls28-dev:arm64 \
-            libnetpgp-dev:arm64 \
-            # XML and parsing
-            libxml2-dev:arm64 \
-            libxslt1-dev:arm64 \
-            # Database
-            unixodbc-dev:arm64 \
-            # Compression
-            zlib1g-dev:arm64 \
-            libbz2-dev:arm64 \
-            # Camera/Video
-            libv4l-dev:arm64 \
-            libgphoto2-dev:arm64 \
-            # Other
-            libncurses-dev:arm64 \
-            libssl-dev:arm64 \
-            libdbus-1-dev:arm64 \
-            libhal-dev:arm64 \
-            libtiff-dev:arm64 \
-            libjpeg-dev:arm64 \
-            libpng-dev:arm64 \
-            libgif-dev:arm64 \
-            libmpg123-dev:arm64 \
-            libopenal-dev:arm64 \
-            libldap2-dev:arm64 \
-            libcapi20-dev:arm64 \
-            libodbc1:arm64 \
-            libsdl2-dev:arm64
-          
+            libx11-dev \
+            libxext-dev \
+            libxrender-dev \
+            libxrandr-dev \
+            libxi-dev \
+            libxfixes-dev \
+            libxcursor-dev \
+            libxcomposite-dev \
+            libxinerama-dev \
+            libxxf86vm-dev \
+            libxdamage-dev \
+            libxmu-dev \
+            libxt-dev \
+            libxaw7-dev \
+            libfreetype-dev \
+            libfontconfig-dev \
+            libxft-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libosmesa6-dev \
+            libasound2-dev \
+            libpulse-dev \
+            libjack-dev \
+            libaudio-dev \
+            libcups2-dev \
+            libsane-dev \
+            libusb-1.0-0-dev \
+            libgnutls28-dev \
+            libxml2-dev \
+            libxslt1-dev \
+            unixodbc-dev \
+            zlib1g-dev \
+            libbz2-dev \
+            libv4l-dev \
+            libgphoto2-dev \
+            libncurses-dev \
+            libssl-dev \
+            libdbus-1-dev \
+            libtiff-dev \
+            libjpeg-dev \
+            libpng-dev \
+            libgif-dev \
+            libmpg123-dev \
+            libopenal-dev \
+            libldap2-dev \
+            libcapi20-dev \
+            libsdl2-dev
+
       - name: Configure for 16K pages
         run: |
           cd wine
-          mkdir build
+          mkdir -p build
           cd build
           ../configure --host=aarch64-linux-gnu \
                        CFLAGS="-DPAGE_SIZE=16384 -O2" \
+                       CXXFLAGS="-DPAGE_SIZE=16384 -O2" \
                        --prefix=/usr/local
-          
+
       - name: Build Wine
         run: |
           cd wine/build
-          echo "Starting build..."
+          echo "Starting build (this will take 30-45 minutes)..."
           make -j$(nproc) 2>&1 | tee build.log
-          
-      - name: Create package
+
+      - name: Create installation package
         run: |
           cd wine/build
           mkdir -p package/usr/local
@@ -118,7 +101,7 @@ jobs:
           cd package
           tar -czf ../../wine-asahi-16k.tar.gz .
           cp ../build.log ../../
-          
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
