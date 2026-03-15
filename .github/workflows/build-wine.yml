@@ -1,0 +1,73 @@
+name: Build Wine for Asahi Linux
+
+on:
+  workflow_dispatch:  # Manual trigger only
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm  # Free ARM64 runner in the cloud!
+    
+    steps:
+      - name: Checkout Wine
+        run: |
+          git clone https://gitlab.winehq.org/wine/wine.git
+          cd wine
+          git checkout wine-10.16
+          
+      - name: Install build dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            build-essential \
+            git \
+            flex \
+            bison \
+            gettext \
+            autoconf \
+            pkg-config \
+            gcc-aarch64-linux-gnu \
+            libc6-dev-arm64-cross \
+            libx11-dev:arm64 \
+            libxext-dev:arm64 \
+            libxrender-dev:arm64 \
+            libxrandr-dev:arm64 \
+            libxi-dev:arm64 \
+            libxfixes-dev:arm64 \
+            libxcursor-dev:arm64 \
+            libxcomposite-dev:arm64 \
+            libxinerama-dev:arm64 \
+            libxxf86vm-dev:arm64 \
+            libgl1-mesa-dev:arm64 \
+            libglu1-mesa-dev:arm64
+            
+      - name: Configure for 16K pages
+        run: |
+          cd wine
+          mkdir build
+          cd build
+          ../configure --host=aarch64-linux-gnu \
+                       CFLAGS="-DPAGE_SIZE=16384 -O2" \
+                       --prefix=/usr/local
+          
+      - name: Build Wine
+        run: |
+          cd wine/build
+          echo "Starting build (this will take 30-45 minutes)..."
+          make -j$(nproc)
+          
+      - name: Create package
+        run: |
+          cd wine/build
+          mkdir -p package/usr/local
+          make install DESTDIR=$(pwd)/package
+          cd package
+          tar -czf ../../wine-asahi-16k.tar.gz .
+          
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wine-asahi-16k-build
+          path: wine/wine-asahi-16k.tar.gz
+          retention-days: 30
